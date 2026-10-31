@@ -1,11 +1,18 @@
 {
-  "name": "production-audit",
+  "name": "audit-kit",
   "owner": { "name": "Stelios Rouselakis" },
+  "metadata": { "description": "Evidence-based audit skills for Claude Code." },
   "plugins": [
     {
       "name": "production-audit",
-      "source": "./",
-      "description": "Pre-production audit + re-audit skill with a living findings register and viewer.",
+      "source": "./plugins/production-audit",
+      "description": "Pre-production audit and re-audit with a living findings register, Go/No-Go verdict and viewer.",
+      "version": "1.0.0"
+    },
+    {
+      "name": "ui-consistency-audit",
+      "source": "./plugins/ui-consistency-audit",
+      "description": "Read-only multi-agent audit of a web frontend for visible UI bugs and style drift.",
       "version": "1.0.0"
     }
   ]

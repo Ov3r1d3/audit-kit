@@ -1,45 +1,25 @@
-# production-audit
+# audit-kit
 
-A Claude Code skill for evidence-based **pre-production audits** that stay useful after launch day.
+Evidence-based audit skills for [Claude Code](https://claude.com/claude-code).
 
-- **Full audit:** parallel review agents for code, security, database, performance, UX, accessibility, product gaps, docs, money paths, messaging and ops. Plus an architecture wiki, CLAUDE.md proposals and an explicit **Go / No-Go** verdict.
-- **Living register:** every finding is one row with its current status (Open, Partial, Fixed, Regressed, Accepted, Not verifiable) and the date it last changed.
-- **Re-audit:** pull the latest code, re-check every finding, mark what's fixed, add new findings, re-judge the verdict.
-- **Viewer:** one self-contained HTML page with an overview per project, one filterable table per stream, expandable evidence and history, launch blockers, and reference docs. A redacted copy is produced for sharing.
+| Plugin | What it does |
+|---|---|
+| [`production-audit`](plugins/production-audit) | Pre-production audit and re-audit. Parallel review agents, a living findings register with dated statuses, a Go/No-Go verdict, and a filterable HTML viewer |
+| [`ui-consistency-audit`](plugins/ui-consistency-audit) | Read-only multi-agent audit of a web frontend for visible UI bugs and style drift, with every high-severity claim verified |
 
 ## Install
 
 In Claude Code:
 
 ```
-/plugin marketplace add Ov3r1d3/claude-production-audit
-/plugin install production-audit@production-audit
+/plugin marketplace add Ov3r1d3/audit-kit
+/plugin install production-audit@audit-kit
+/plugin install ui-consistency-audit@audit-kit
 ```
 
-Or from a terminal:
+From a terminal, use `claude plugin marketplace add …` and `claude plugin install …`.
 
-```bash
-claude plugin marketplace add Ov3r1d3/claude-production-audit
-claude plugin install production-audit@production-audit
-```
-
-## Use
-
-Just ask:
-- "Run a full production audit of this repo before we launch."
-- "Re-audit: what's fixed since the last audit?"
-- "Add the payments-service repo to the audit."
-- "Mark CQB-07 as fixed, it's in commit abc123."
-
-The audit lives in `docs/PRODUCTION-AUDIT/`. Open `index.html` in a browser.
-
-## Requirements
-
-- Claude Code with sub-agents.
-- Python 3.10+ for the register and viewer scripts (standard library only).
-- Optional: Node 18+ to validate Mermaid diagrams (`skills/production-audit/scripts/check_mermaid.mjs`, setup in its header).
-
-The audit is read-only: it never edits application code, CLAUDE.md, or anything outside the audit folder.
+To update later: `/plugin marketplace update audit-kit`, then `/plugin update <plugin>@audit-kit`.
 
 ## License
 

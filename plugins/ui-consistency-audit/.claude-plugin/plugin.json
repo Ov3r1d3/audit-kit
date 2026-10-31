@@ -1,0 +1,8 @@
+{
+  "name": "ui-consistency-audit",
+  "version": "1.0.0",
+  "description": "Read-only, multi-agent UI consistency audit of a web frontend: finds visible bugs and style drift (sizes, theming, dark mode, controls, states, copy, dead code), verifies every claim, and delivers one prioritized report.",
+  "author": { "name": "Stelios Rouselakis" },
+  "license": "MIT",
+  "keywords": ["ui", "design-system", "consistency", "dark-mode", "frontend", "audit"]
+}
