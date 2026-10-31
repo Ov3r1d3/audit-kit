@@ -1,0 +1,8 @@
+{
+  "name": "production-audit",
+  "version": "1.0.0",
+  "description": "Evidence-based pre-production audits with parallel review agents, a living findings register (every finding tracked Open/Partial/Fixed with dates), re-audits, Go/No-Go launch readiness and a filterable HTML viewer.",
+  "author": { "name": "Stelios Rouselakis" },
+  "license": "MIT",
+  "keywords": ["audit", "launch-readiness", "security-review", "code-review", "go-no-go", "re-audit"]
+}

@@ -1,0 +1,12 @@
+{
+  "name": "production-audit",
+  "owner": { "name": "Stelios Rouselakis" },
+  "plugins": [
+    {
+      "name": "production-audit",
+      "source": "./",
+      "description": "Pre-production audit + re-audit skill with a living findings register and viewer.",
+      "version": "1.0.0"
+    }
+  ]
+}

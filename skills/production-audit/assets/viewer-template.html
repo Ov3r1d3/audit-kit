@@ -1,0 +1,982 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Production Audit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f1f4f5;
+  --surface: #ffffff;
+  --surface-2: #e6ecee;
+  --ink: #121a1d;
+  --ink-2: #3c4a50;
+  --ink-3: #66767d;
+  --rule: #d3dde1;
+  --accent: #0f5b52;
+  --accent-ink: #ffffff;
+  --link: #0b5e8a;
+  --mark: #ffe58a;
+  --sev-critical: #a3141c;
+  --sev-high: #c4520a;
+  --sev-medium: #a87b00;
+  --sev-low: #5d6b78;
+  --sev-critical-bg: #fbe3e3;
+  --sev-high-bg: #fde9d9;
+  --sev-medium-bg: #fbf1cf;
+  --sev-low-bg: #e7ecf0;
+  --nogo: #a3141c;
+  --go: #1f7a3a;
+  --go-bg: #dcf1e3;
+  --shadow: 0 1px 0 rgba(18,26,29,.04), 0 8px 24px -12px rgba(18,26,29,.2);
+  --radius-s: 4px;
+  --radius-m: 10px;
+  --sidebar-w: 290px;
+  --font-sans: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --ease: cubic-bezier(.16,1,.3,1);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1416; --surface: #151d20; --surface-2: #1e292d; --ink: #e4ecee; --ink-2: #b2c0c5;
+    --ink-3: #82939a; --rule: #2a373c; --accent: #5fc4b3; --accent-ink: #0d1d1a; --link: #7cc3ea;
+    --mark: #6b5a12; --sev-critical: #ff7a7f; --sev-high: #ffa260; --sev-medium: #e9c45a; --sev-low: #a9b6c2;
+    --sev-critical-bg: #3a1618; --sev-high-bg: #3a2414; --sev-medium-bg: #352c10; --sev-low-bg: #242a30;
+    --nogo: #ff7a7f; --go: #6fd18d; --go-bg: #15301f; --shadow: 0 8px 24px -12px rgba(0,0,0,.6); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1416; --surface: #151d20; --surface-2: #1e292d; --ink: #e4ecee; --ink-2: #b2c0c5;
+  --ink-3: #82939a; --rule: #2a373c; --accent: #5fc4b3; --accent-ink: #0d1d1a; --link: #7cc3ea;
+  --mark: #6b5a12; --sev-critical: #ff7a7f; --sev-high: #ffa260; --sev-medium: #e9c45a; --sev-low: #a9b6c2;
+  --sev-critical-bg: #3a1618; --sev-high-bg: #3a2414; --sev-medium-bg: #352c10; --sev-low-bg: #242a30;
+  --nogo: #ff7a7f; --go: #6fd18d; --go-bg: #15301f; --shadow: 0 8px 24px -12px rgba(0,0,0,.6); color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-padding-top: 72px; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 15px/1.6 var(--font-sans); -webkit-font-smoothing: antialiased; }
+a { color: var(--link); text-underline-offset: 2px; }
+a:hover { text-decoration-thickness: 2px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+.skip { position: absolute; left: -999px; top: 8px; background: var(--accent); color: var(--accent-ink); padding: 8px 12px; z-index: 50; }
+.skip:focus { left: 8px; }
+
+/* ---------- shell ---------- */
+.shell { display: grid; grid-template-columns: var(--sidebar-w) minmax(0,1fr); min-height: 100vh; }
+.sidebar { position: sticky; top: 0; height: 100vh; overflow-y: auto; border-right: 1px solid var(--rule); background: var(--surface); display: flex; flex-direction: column; }
+.brand { padding: 22px 20px 16px; border-bottom: 1px solid var(--rule); }
+.brand a { color: inherit; text-decoration: none; display: block; }
+.brand .eyebrow { font: 500 11px/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
+.brand .name { font-weight: 700; font-size: 19px; letter-spacing: -.01em; margin-top: 6px; }
+.brand .date { color: var(--ink-3); font-size: 12.5px; margin-top: 2px; }
+.search { padding: 14px 16px 6px; }
+.search label { position: absolute; left: -999px; }
+.search input { width: 100%; padding: 9px 12px; border-radius: var(--radius-s); border: 1px solid var(--rule); background: var(--bg); color: var(--ink); font: inherit; font-size: 14px; }
+.search input:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
+.search .hint { font-size: 12px; color: var(--ink-3); margin-top: 6px; min-height: 18px; }
+nav.toc { padding: 4px 8px 24px; flex: 1; }
+.group-label { font: 500 11px/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); padding: 18px 12px 8px; }
+.nav-item { display: flex; align-items: flex-start; gap: 8px; padding: 6px 12px; border-radius: var(--radius-s); color: var(--ink-2); text-decoration: none; font-size: 13.5px; line-height: 1.35; transition: background .15s var(--ease), color .15s var(--ease); }
+.nav-item:hover { background: var(--surface-2); color: var(--ink); text-decoration: none; }
+.nav-item[aria-current="page"] { background: var(--accent); color: var(--accent-ink); }
+.nav-item[aria-current="page"] .pill, .nav-item[aria-current="page"] .cnt { background: rgba(255,255,255,.18); color: inherit; }
+.nav-item .t { flex: 1; min-width: 0; }
+.nav-item.top { font-weight: 600; color: var(--ink); }
+.nav-item .cnt { font: 500 11px/1 var(--font-mono); padding: 3px 5px; border-radius: 3px; color: var(--ink-3); background: var(--surface-2); }
+.pills { display: inline-flex; gap: 3px; flex-shrink: 0; margin-top: 1px; }
+.pill { font: 500 10.5px/1 var(--font-mono); padding: 3px 5px; border-radius: 3px; }
+.pill.c { background: var(--sev-critical-bg); color: var(--sev-critical); }
+.pill.h { background: var(--sev-high-bg); color: var(--sev-high); }
+.pill.ng { background: var(--sev-critical-bg); color: var(--nogo); font-weight: 600; }
+.pill.g { background: var(--go-bg); color: var(--go); font-weight: 600; }
+.sidebar-foot { padding: 12px 16px; border-top: 1px solid var(--rule); display: flex; gap: 8px; }
+.btn { font: 500 13px var(--font-sans); padding: 7px 11px; border-radius: var(--radius-s); border: 1px solid var(--rule); background: var(--surface); color: var(--ink); cursor: pointer; transition: background .15s var(--ease), transform .1s var(--ease); }
+.btn:hover { background: var(--surface-2); }
+.btn:active { transform: translateY(1px); }
+
+.main { min-width: 0; }
+.topbar { display: none; }
+.content-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 230px; gap: 40px; padding-block: 36px 96px; padding-left: max(40px, env(safe-area-inset-left, 0px)); padding-right: max(32px, env(safe-area-inset-right, 0px)); }
+.content-wrap.wide { grid-template-columns: minmax(0, 1fr); }
+.content-wrap.wide .onpage { display: none; }
+.onpage { position: sticky; top: 32px; align-self: start; max-height: calc(100vh - 64px); overflow-y: auto; font-size: 12.5px; border-left: 1px solid var(--rule); padding-left: 16px; }
+.onpage h2 { font: 500 11px/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 10px; }
+.onpage a { display: block; color: var(--ink-2); text-decoration: none; padding: 3px 0; line-height: 1.35; }
+.onpage a.l3 { padding-left: 12px; color: var(--ink-3); }
+.onpage a:hover { color: var(--ink); }
+
+/* ---------- article ---------- */
+.doc-meta { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font: 500 12px var(--font-mono); color: var(--ink-3); margin-bottom: 10px; }
+.doc-meta .path { background: var(--surface-2); padding: 3px 7px; border-radius: 3px; }
+article, .page { animation: rise .35s var(--ease); }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+article h1, .page-title { font-size: clamp(28px, 2.2vw + 16px, 40px); line-height: 1.12; letter-spacing: -.022em; font-weight: 700; margin: 0 0 14px; text-wrap: balance; }
+article h2 { font-size: 22px; letter-spacing: -.012em; margin: 44px 0 12px; padding-top: 18px; border-top: 1px solid var(--rule); }
+article h3 { font-size: 17px; margin: 30px 0 8px; }
+article h4 { font-size: 15px; margin: 22px 0 6px; color: var(--ink-2); }
+article p, article li { color: var(--ink); max-width: 80ch; }
+article li { margin: 3px 0; }
+article blockquote { margin: 16px 0; padding: 10px 16px; border-left: 3px solid var(--accent); background: var(--surface); color: var(--ink-2); border-radius: 0 var(--radius-s) var(--radius-s) 0; }
+code { font: 400 .86em var(--font-mono); background: var(--surface-2); padding: .1em .35em; border-radius: 3px; overflow-wrap: anywhere; }
+article pre { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius-m); padding: 14px 16px; overflow-x: auto; }
+article pre code { background: none; padding: 0; font-size: 12.5px; overflow-wrap: normal; }
+article hr { border: 0; border-top: 1px solid var(--rule); margin: 32px 0; }
+.table-wrap { overflow-x: auto; margin: 16px 0 22px; border: 1px solid var(--rule); border-radius: var(--radius-m); background: var(--surface); box-shadow: var(--shadow); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; line-height: 1.5; }
+td, th { overflow-wrap: anywhere; word-break: normal; hyphens: auto; }
+td code { white-space: normal; }
+th { text-align: left; font-weight: 600; background: var(--surface-2); color: var(--ink-2); }
+th, td { padding: 8px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+article tbody tr:hover td { background: color-mix(in srgb, var(--surface-2) 55%, transparent); }
+article table td:first-child { font-family: var(--font-mono); font-size: 12px; }
+.sev { display: inline-block; font: 600 10.5px/1 var(--font-mono); letter-spacing: .06em; padding: 4px 6px; border-radius: 3px; white-space: nowrap; }
+.sev-CRITICAL { color: var(--sev-critical); background: var(--sev-critical-bg); }
+.sev-HIGH { color: var(--sev-high); background: var(--sev-high-bg); }
+.sev-MEDIUM { color: var(--sev-medium); background: var(--sev-medium-bg); }
+.sev-LOW { color: var(--sev-low); background: var(--sev-low-bg); }
+.mermaid-box { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius-m); padding: 16px; margin: 18px 0; overflow-x: auto; text-align: center; }
+.mermaid-box svg { max-width: 100%; height: auto; }
+.mermaid-err { text-align: left; color: var(--sev-high); font: 12px var(--font-mono); }
+.repo-path { font-family: var(--font-mono); font-size: .86em; border-bottom: 1px dotted var(--ink-3); cursor: help; }
+mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1px; }
+.heading-anchor { opacity: 0; margin-left: 8px; text-decoration: none; color: var(--ink-3); font-weight: 400; }
+h2:hover .heading-anchor, h3:hover .heading-anchor { opacity: 1; }
+a.fid { font-family: var(--font-mono); font-size: .9em; white-space: nowrap; }
+
+/* ---------- status ---------- */
+.st { display: inline-block; font: 600 10.5px/1 var(--font-mono); letter-spacing: .05em; text-transform: uppercase; padding: 4px 6px; border-radius: 3px; white-space: nowrap; }
+.st-OPEN { color: var(--sev-high); background: var(--sev-high-bg); }
+.st-PARTIAL { color: var(--sev-medium); background: var(--sev-medium-bg); }
+.st-REGRESSED { color: var(--sev-critical); background: var(--sev-critical-bg); }
+.st-FIXED { color: var(--go); background: var(--go-bg); }
+.st-ACCEPTED { color: var(--ink-2); background: var(--surface-2); }
+.st-NOT-VERIFIABLE { color: var(--ink-3); background: transparent; box-shadow: inset 0 0 0 1px var(--rule); }
+.since { display: block; font: 400 11.5px var(--font-mono); color: var(--ink-3); margin-top: 4px; white-space: nowrap; }
+
+/* ---------- page header ---------- */
+.crumbs { font: 500 11px/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 10px; }
+.crumbs a { color: inherit; text-decoration: none; } .crumbs a:hover { color: var(--ink); }
+.lede { color: var(--ink-2); margin: 0 0 22px; max-width: 80ch; }
+.mini-stats { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 22px; }
+.mini { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius-m); padding: 10px 14px; min-width: 120px; }
+.mini .n { font-size: 24px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.mini .k { font: 500 10.5px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+.mini.c .n { color: var(--sev-critical); } .mini.h .n { color: var(--sev-high); } .mini.g .n { color: var(--go); }
+
+/* ---------- data table ---------- */
+.filters { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: end; padding: 12px 14px; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius-m) var(--radius-m) 0 0; border-bottom: 0; }
+.filters label { display: flex; flex-direction: column; gap: 4px; font: 500 10.5px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+.filters select, .filters input[type=search] { font: 400 13.5px var(--font-sans); color: var(--ink); background: var(--bg); border: 1px solid var(--rule); border-radius: var(--radius-s); padding: 6px 8px; min-width: 130px; }
+.filters input[type=search] { min-width: 220px; }
+.filters .chk { flex-direction: row; align-items: center; gap: 6px; text-transform: none; letter-spacing: 0; font: 500 13px var(--font-sans); color: var(--ink-2); padding-bottom: 6px; }
+.filters .count { margin-left: auto; font: 500 12px var(--font-mono); color: var(--ink-3); padding-bottom: 6px; }
+.dt-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 0 0 var(--radius-m) var(--radius-m); background: var(--surface); box-shadow: var(--shadow); }
+table.dt { table-layout: fixed; }
+table.dt th { position: sticky; top: 0; z-index: 1; white-space: nowrap; }
+table.dt th button { all: unset; cursor: pointer; } table.dt th button:hover { color: var(--ink); }
+table.dt th button:focus-visible { outline: 2px solid var(--accent); }
+table.dt td.loc, table.dt td.loc code { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-2); background: none; padding: 0; }
+table.dt td.loc { padding: 8px 12px; }
+table.dt tr.row { cursor: pointer; }
+table.dt tr.row:hover td { background: color-mix(in srgb, var(--surface-2) 55%, transparent); }
+table.dt tr.row.open td { background: var(--surface-2); border-bottom-color: transparent; }
+table.dt tr.row.closed-row td:not(:nth-child(3)) { color: var(--ink-3); }
+table.dt td.idc { font: 500 12px var(--font-mono); white-space: nowrap; }
+.tog { all: unset; cursor: pointer; font: 500 12px var(--font-mono); color: var(--link); display: inline-flex; gap: 6px; align-items: center; }
+.tog::before { content: "▸"; color: var(--ink-3); font-size: 10px; transition: transform .15s var(--ease); }
+tr.open .tog::before { transform: rotate(90deg); }
+.tog:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+table.dt tr.detail td { background: var(--surface-2); padding: 4px 18px 18px; }
+.dgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px 28px; }
+.dgrid h4 { font: 500 10.5px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); margin: 10px 0 4px; }
+.dgrid p { margin: 0 0 6px; max-width: none; }
+.dgrid .full { grid-column: 1 / -1; }
+.dgrid .md { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius-s); padding: 6px 14px; font-size: 13.5px; }
+.dgrid .md pre { background: var(--bg); border: 1px solid var(--rule); border-radius: var(--radius-s); padding: 10px 12px; overflow-x: auto; }
+.dgrid .md pre code { background: none; padding: 0; font-size: 12px; overflow-wrap: normal; }
+.hist { list-style: none; margin: 0; padding: 0; }
+.hist li { display: grid; grid-template-columns: 70px 118px minmax(0, 1fr); gap: 10px; padding: 4px 0; border-top: 1px dashed var(--rule); font-size: 13px; }
+.hist li:first-child { border-top: 0; }
+.hist .d { font: 400 12px var(--font-mono); color: var(--ink-3); }
+.empty { padding: 26px; text-align: center; color: var(--ink-3); }
+.lb-chip { display: inline-block; font: 600 11px/1.4 var(--font-mono); color: var(--sev-critical); text-decoration: none; margin: 0 4px 2px 0; }
+.lb-chip.done { color: var(--go); }
+.lb-no { font: 500 11px var(--font-mono); color: var(--ink-3); }
+details.notes { margin-top: 32px; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius-m); }
+details.notes > summary { cursor: pointer; padding: 14px 18px; font-weight: 600; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
+details.notes > summary::-webkit-details-marker { display: none; }
+details.notes > summary::after { content: "Show"; font: 500 12px var(--font-mono); color: var(--link); }
+details.notes[open] > summary::after { content: "Hide"; }
+details.notes > summary small { font-weight: 400; color: var(--ink-3); }
+details.notes > article { padding: 0 22px 22px; border-top: 1px solid var(--rule); }
+
+/* ---------- overview ---------- */
+.projects { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 30px; }
+.proj { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius-m); padding: 22px 24px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 14px; }
+.proj .eyebrow { font: 500 11px/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
+.proj .head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.proj h2 { margin: 6px 0 0; font-size: 22px; letter-spacing: -.01em; }
+.proj .sub { color: var(--ink-3); font-size: 13px; }
+.proj .word { font-size: clamp(34px, 2.6vw + 14px, 50px); font-weight: 700; letter-spacing: -.035em; line-height: 1; color: var(--nogo); }
+.proj .word.go { color: var(--go); }
+.prog { display: flex; height: 12px; border-radius: 3px; overflow: hidden; background: var(--surface-2); }
+.prog span { display: block; height: 100%; }
+.prog-lbl { display: flex; justify-content: space-between; font: 500 12px var(--font-mono); color: var(--ink-3); margin-bottom: 6px; }
+.prog-lbl b { color: var(--ink); }
+.proj .nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.proj .nums div { background: var(--bg); border-radius: var(--radius-s); padding: 8px 10px; }
+.proj .nums .n { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.proj .nums .k { font: 500 10.5px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+.proj .nums .c .n { color: var(--sev-critical); } .proj .nums .g .n { color: var(--go); }
+.proj .links { display: flex; gap: 10px; flex-wrap: wrap; margin-top: auto; }
+.cta { display: inline-flex; gap: 8px; align-items: center; background: var(--ink); color: var(--bg); padding: 8px 13px; border-radius: var(--radius-s); text-decoration: none; font-weight: 600; font-size: 13.5px; transition: transform .15s var(--ease); }
+.cta:hover { transform: translateX(2px); text-decoration: none; }
+.cta.ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--rule); }
+.section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 34px 0 12px; flex-wrap: wrap; }
+.section-title h2 { font-size: 20px; margin: 0; letter-spacing: -.01em; }
+.legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--ink-3); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.stream-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.bars { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius-m); padding: 8px 0; }
+.bars h3 { font: 500 11px/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); margin: 10px 18px 6px; }
+.bar-row { display: grid; grid-template-columns: 170px minmax(0,1fr) 112px; gap: 12px; align-items: center; padding: 7px 18px; text-decoration: none; color: inherit; transition: background .15s var(--ease); }
+.bar-row:hover { background: var(--surface-2); text-decoration: none; }
+.bar-row .lbl { font-size: 13.5px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar { display: flex; height: 12px; border-radius: 3px; overflow: hidden; background: var(--surface-2); }
+.bar span { display: block; height: 100%; }
+.bar span, .prog span { transform-origin: left; animation: grow .6s var(--ease) both; }
+@keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.bar-row .tot { font: 500 12px var(--font-mono); color: var(--ink-3); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bar-row .tot b { color: var(--sev-high); font-weight: 600; }
+.s-FIXED { background: var(--go); } .s-ACCEPTED { background: var(--ink-3); } .s-PARTIAL { background: var(--sev-medium); }
+.s-OPEN { background: var(--sev-high); } .s-REGRESSED { background: var(--sev-critical); } .s-NOT-VERIFIABLE { background: var(--rule); }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.card { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius-m); padding: 14px 16px; text-decoration: none; color: inherit; transition: transform .15s var(--ease), box-shadow .15s var(--ease), border-color .15s var(--ease); }
+.card:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: var(--accent); text-decoration: none; }
+.card .num { font: 500 11px var(--font-mono); color: var(--ink-3); }
+.card .ttl { font-weight: 600; font-size: 14px; margin-top: 4px; line-height: 1.3; }
+.foot { margin-top: 36px; color: var(--ink-3); font-size: 13px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+@media (max-width: 1360px) {
+  .content-wrap { grid-template-columns: minmax(0, 1fr); padding-block: 32px 80px; padding-left: max(32px, env(safe-area-inset-left, 0px)); padding-right: max(32px, env(safe-area-inset-right, 0px)); }
+  .onpage { display: none; }
+}
+@media (max-width: 1100px) {
+  .projects, .stream-cols { grid-template-columns: 1fr; }
+}
+@media (max-width: 860px) {
+  .shell { grid-template-columns: 1fr; }
+  .sidebar { position: fixed; inset: 0 auto 0 0; width: min(88vw, 320px); z-index: 40; transform: translateX(-102%); transition: transform .25s var(--ease); box-shadow: var(--shadow); padding-left: env(safe-area-inset-left, 0px); }
+  body.nav-open .sidebar { transform: none; }
+  body.nav-open .scrim { display: block; }
+  .scrim { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 30; }
+  .topbar { display: flex; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; align-items: center; gap: 10px; padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); background: var(--surface); border-bottom: 1px solid var(--rule); }
+  .topbar .ttl { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .content-wrap { padding-block: 20px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .bar-row { grid-template-columns: 1fr; gap: 6px; }
+  .bar-row .tot { text-align: left; }
+  .dgrid { grid-template-columns: 1fr; }
+  .filters input[type=search] { min-width: 0; width: 100%; }
+  .filters .count { margin-left: 0; }
+}
+@media print {
+  .sidebar, .topbar, .onpage, .scrim, .filters { display: none !important; }
+  .shell, .content-wrap { display: block; padding: 0; }
+  .table-wrap, .dt-wrap { box-shadow: none; overflow: visible; }
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<div class="scrim" id="scrim"></div>
+<div class="shell">
+  <aside class="sidebar" id="sidebar" aria-label="Audit navigation">
+    <div class="brand">
+      <a href="#/">
+        <div class="eyebrow">Pre-production audit</div>
+        <div class="name" id="brandName"></div>
+        <div class="date" id="brandDate"></div>
+      </a>
+    </div>
+    <div class="search">
+      <label for="q">Search findings and documents</label>
+      <input id="q" type="search" placeholder="Search…  ( / )" autocomplete="off">
+      <div class="hint" id="hint" aria-live="polite"></div>
+    </div>
+    <nav class="toc" id="toc" aria-label="Audit pages"></nav>
+    <div class="sidebar-foot">
+      <button class="btn" id="themeBtn" type="button">Theme: auto</button>
+    </div>
+  </aside>
+  <div class="main">
+    <div class="topbar">
+      <button class="btn" id="menuBtn" type="button" aria-controls="sidebar" aria-expanded="false">Menu</button>
+      <div class="ttl" id="topTitle">Audit</div>
+    </div>
+    <div class="content-wrap" id="wrap">
+      <main id="content" tabindex="-1"></main>
+      <aside class="onpage" id="onpage" aria-label="On this page"></aside>
+    </div>
+  </div>
+</div>
+
+<script id="audit-data" type="application/json">__AUDIT_DATA__</script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>
+<script>
+(() => {
+  const DATA = JSON.parse(document.getElementById('audit-data').textContent);
+  const $ = sel => document.querySelector(sel);
+  const SEVS = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
+  const STATUS = {
+    OPEN: { label: 'Open', group: 'active', rank: 1 },
+    REGRESSED: { label: 'Regressed', group: 'active', rank: 0 },
+    PARTIAL: { label: 'Partial', group: 'active', rank: 2 },
+    'NOT-VERIFIABLE': { label: 'Not verifiable', group: 'other', rank: 3 },
+    ACCEPTED: { label: 'Accepted', group: 'closed', rank: 4 },
+    FIXED: { label: 'Fixed', group: 'closed', rank: 5 },
+  };
+  const STATUS_ORDER = ['FIXED', 'ACCEPTED', 'PARTIAL', 'REGRESSED', 'OPEN', 'NOT-VERIFIABLE'];
+  const CONFIG = DATA.config;
+  const PRODUCT = CONFIG.product;
+  const PROJECTS = Object.fromEntries(CONFIG.projects.map(p => [p.key, { label: p.label, sub: p.sub || '' }]));
+  const ID_RE = /\b[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*-[A-Z]?\d+[a-z]?\b/g;
+
+  const STREAMS = new Map(DATA.streams.map(s => [s.key, s]));
+  const FINDINGS = DATA.findings;
+  const BY_FID = new Map(FINDINGS.map(f => [f.id, f]));
+  const BY_BID = new Map(DATA.blockers.map(b => [b.id, b]));
+  const DOCS = new Map(DATA.docs.map(d => [d.id, d]));
+  const ALIASES = DATA.aliases;
+  // which blockers each finding feeds
+  const BLOCKERS_OF = new Map();
+  for (const b of DATA.blockers) for (const id of (b.sources.match(ID_RE) || [])) {
+    if (!BY_FID.has(id)) continue;
+    if (!BLOCKERS_OF.has(id)) BLOCKERS_OF.set(id, []);
+    BLOCKERS_OF.get(id).push(b.id);
+  }
+
+  // ---------- helpers ----------
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  const slug = s => s.toLowerCase().replace(/<[^>]+>/g, '').replace(/[^\p{L}\p{N}\s-]/gu, '').trim().replace(/\s+/g, '-');
+  const inl = s => DOMPurify.sanitize(marked.parseInline(String(s || '')));
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const fmtDate = d => { const [y, m, dd] = (d || '').split('-'); return y ? `${+dd} ${MONTHS[+m - 1]}` : ''; };
+  const fmtLong = d => { const [y] = (d || '').split('-'); return `${fmtDate(d)} ${y}`; };
+  const groupOf = st => (STATUS[st] || STATUS.OPEN).group;
+  const isActive = f => groupOf(f.status) === 'active';
+  const stBadge = (st, since) => `<span class="st st-${st}">${esc((STATUS[st] || { label: st }).label)}</span>${since ? `<span class="since">${st === 'OPEN' ? 'since' : ''} ${fmtDate(since)}</span>` : ''}`;
+  const sevBadge = s => `<span class="sev sev-${s}">${s}</span>`;
+  const findingRoute = id => { const f = BY_FID.get(id); return f ? `stream/${f.stream}::${id}` : ''; };
+  const blockerRoute = id => { const b = BY_BID.get(id); return b ? `readiness/${b.project}::${id}` : ''; };
+  function tally(list) {
+    const c = { total: list.length, active: 0, closed: 0, other: 0, sevActive: { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 } };
+    STATUS_ORDER.forEach(s => c[s] = 0);
+    for (const f of list) {
+      c[f.status] = (c[f.status] || 0) + 1;
+      c[groupOf(f.status)]++;
+      if (isActive(f)) c.sevActive[f.severity]++;
+    }
+    return c;
+  }
+  function verdictOf(project) {
+    const m = DATA.readiness[project].md.match(/Recommendation:\s*\*\*([A-Z\- ]+)\*\*/);
+    return m ? m[1].trim() : '—';
+  }
+  function dirname(p) { const i = p.lastIndexOf('/'); return i < 0 ? '' : p.slice(0, i + 1); }
+  function resolve(base, rel) {
+    const parts = (dirname(base) + rel).split('/');
+    const out = [];
+    for (const p of parts) {
+      if (p === '..') { if (out.length && out[out.length - 1] !== '..') out.pop(); else out.push('..'); }
+      else if (p !== '.' && p !== '') out.push(p);
+    }
+    return out.join('/');
+  }
+
+  // ---------- routing ----------
+  // route = "<path>[?query][::anchor]"   paths: "", findings, readiness/<project>, stream/<key>, doc/<file>
+  let state = '';
+  const readHash = () => { try { return decodeURI(location.hash.replace(/^#\/?/, '')); } catch (e) { return ''; } };
+  state = readHash();
+  function parseRoute(raw) {
+    const [pq, anchor = ''] = raw.split('::');
+    const [path, qs = ''] = pq.split('?');
+    return { path, anchor, params: new URLSearchParams(qs) };
+  }
+  function navigate(raw) {
+    state = raw;
+    route();
+    try { history.pushState(null, '', '#/' + encodeURI(raw)); } catch (e) { /* framed viewer may refuse history */ }
+  }
+  function replaceQuery(path, params) {
+    const qs = params.toString();
+    state = path + (qs ? '?' + qs : '');
+    try { history.replaceState(null, '', '#/' + encodeURI(state)); } catch (e) { /* ignore */ }
+  }
+  function route() {
+    const { path, anchor, params } = parseRoute(state);
+    const wide = path === 'findings' || path.startsWith('stream/') || path.startsWith('readiness/') || path === '';
+    $('#wrap').classList.toggle('wide', wide);
+    $('#onpage').innerHTML = '';
+    if (!path) renderOverview();
+    else if (path === 'findings') renderAllFindings(params, anchor);
+    else if (path.startsWith('readiness/') && DATA.readiness[path.slice(10)]) renderReadiness(path.slice(10), anchor);
+    else if (path.startsWith('stream/') && STREAMS.has(path.slice(7))) renderStream(STREAMS.get(path.slice(7)), params, anchor);
+    else if (path.startsWith('doc/') && DOCS.has(path.slice(4))) renderDocPage(DOCS.get(path.slice(4)), anchor);
+    else if (path.startsWith('finding/') && findingRoute(path.slice(8))) { state = findingRoute(path.slice(8)); return route(); }
+    else renderMissing(path);
+    markCurrent();
+    document.body.classList.remove('nav-open');
+    $('#menuBtn').setAttribute('aria-expanded', 'false');
+  }
+  function setTitle(t) { $('#topTitle').textContent = t; document.title = t === 'Overview' ? `${PRODUCT} Production Audit` : `${t} · ${PRODUCT} audit`; }
+  function scrollTop() { try { window.scrollTo(0, 0); } catch (e) { /* jsdom */ } $('#content').focus({ preventScroll: true }); }
+
+  // ---------- sidebar ----------
+  let query = '';
+  const WIKI_ROOT = CONFIG.wikiRoot || '';
+  const REFERENCE = CONFIG.reference || [];
+  const findingText = f => `${f.id} ${f.description} ${f.fix} ${f.location} ${f.evidence} ${f.note} ${f.detail}`.toLowerCase();
+  function streamPills(list) {
+    const c = tally(list);
+    return `<span class="pills">${c.sevActive.CRITICAL ? `<span class="pill c" title="${c.sevActive.CRITICAL} active critical">${c.sevActive.CRITICAL}C</span>` : ''}${c.sevActive.HIGH ? `<span class="pill h" title="${c.sevActive.HIGH} active high">${c.sevActive.HIGH}H</span>` : ''}<span class="cnt" title="${c.active} active of ${c.total}">${c.active}</span></span>`;
+  }
+  function renderToc() {
+    const q = query.toLowerCase();
+    const item = (route, label, extra = '', cls = '') => `<a class="nav-item ${cls}" href="#/${encodeURI(route)}" data-route="${esc(route)}"><span class="t">${esc(label)}</span>${extra}</a>`;
+    let html = item('', 'Overview', '', 'top');
+    const matchCount = q ? FINDINGS.filter(f => findingText(f).includes(q)).length : 0;
+    html += item('findings', 'All findings', `<span class="cnt">${q ? matchCount + ' match' : tally(FINDINGS).active + ' active'}</span>`, 'top');
+    html += `<div class="group-label">Launch readiness</div>`;
+    for (const p of Object.keys(PROJECTS)) {
+      const v = verdictOf(p);
+      html += item(`readiness/${p}`, PROJECTS[p].label, `<span class="pill ${v === 'GO' ? 'g' : 'ng'}">${esc(v)}</span>`);
+    }
+    for (const p of Object.keys(PROJECTS)) {
+      const rows = DATA.streams.filter(s => s.project === p).map(s => {
+        const list = FINDINGS.filter(f => f.stream === s.key);
+        if (q && !list.some(f => findingText(f).includes(q)) && !s.title.toLowerCase().includes(q) && !s.notes.toLowerCase().includes(q)) return '';
+        const hits = q ? list.filter(f => findingText(f).includes(q)).length : 0;
+        return item(`stream/${s.key}`, s.title, q ? `<span class="cnt">${hits}</span>` : streamPills(list));
+      }).join('');
+      if (rows) html += `<div class="group-label">${esc(PROJECTS[p].label)} findings</div>${rows}`;
+    }
+    const refs = REFERENCE.filter(([id]) => !q || (DOCS.get(id)?.md || '').toLowerCase().includes(q) || (WIKI_ROOT && id === WIKI_ROOT && DATA.docs.some(d => d.id.startsWith(WIKI_ROOT.replace(/[^/]*$/, '')) && d.md.toLowerCase().includes(q))));
+    if (refs.length) html += `<div class="group-label">Reference</div>${refs.map(([id, label]) => item('doc/' + id, label)).join('')}`;
+    $('#toc').innerHTML = html;
+    $('#hint').innerHTML = q ? `${matchCount} finding${matchCount === 1 ? '' : 's'} match · <a href="#/findings?status=all&q=${encodeURIComponent(query)}">show them</a>` : '';
+    markCurrent();
+  }
+  function markCurrent() {
+    const { path } = parseRoute(state);
+    const wikiDir = WIKI_ROOT ? 'doc/' + WIKI_ROOT.replace(/[^/]*$/, '') : '';
+    const cur = wikiDir && path.startsWith(wikiDir) ? 'doc/' + WIKI_ROOT : path;
+    document.querySelectorAll('.nav-item').forEach(a => {
+      if (a.dataset.route === cur) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    });
+  }
+
+  // ---------- data table ----------
+  const FILTER_DEFAULTS = { status: 'active', sev: 'all', blockers: '', q: '', project: 'all', stream: 'all', sort: '' };
+  const STATUS_FILTERS = [['active', 'Active (open · partial · regressed)'], ['closed', 'Closed (fixed · accepted)'], ['FIXED', 'Fixed only'], ['other', 'Not verifiable'], ['all', 'All']];
+  const SEV_FILTERS = [['all', 'All'], ['ch', 'Critical + High'], ...SEVS.map(s => [s, s[0] + s.slice(1).toLowerCase()])];
+  const opt = (pairs, cur) => pairs.map(([v, l]) => `<option value="${esc(v)}"${v === cur ? ' selected' : ''}>${esc(l)}</option>`).join('');
+
+  function filterRows(rows, f) {
+    const q = f.q.toLowerCase();
+    return rows.filter(r => {
+      if (f.status === 'active' && groupOf(r.status) !== 'active') return false;
+      if (f.status === 'closed' && groupOf(r.status) !== 'closed') return false;
+      if (f.status === 'other' && groupOf(r.status) !== 'other') return false;
+      if (f.status === 'FIXED' && r.status !== 'FIXED') return false;
+      if (f.sev === 'ch' && !['CRITICAL', 'HIGH'].includes(r.severity)) return false;
+      if (SEVS.includes(f.sev) && r.severity !== f.sev) return false;
+      if (f.project !== 'all' && r.project !== f.project) return false;
+      if (f.stream !== 'all' && r.stream !== f.stream) return false;
+      if (f.blockers && !(r.blocker || BLOCKERS_OF.has(r.id) || r.tier)) return false;
+      if (q && !(r._text || (r._text = (r.tier !== undefined ? `${r.id} ${r.title} ${r.sources} ${r.fix} ${r.evidence} ${r.remains}`.toLowerCase() : findingText(r)))).includes(q)) return false;
+      return true;
+    });
+  }
+  const SORTS = {
+    '': (a, b) => (STATUS[a.status].group === 'active' ? 0 : 1) - (STATUS[b.status].group === 'active' ? 0 : 1) || SEVS.indexOf(a.severity) - SEVS.indexOf(b.severity) || a.id.localeCompare(b.id, 'en', { numeric: true }),
+    id: (a, b) => a.id.localeCompare(b.id, 'en', { numeric: true }),
+    severity: (a, b) => SEVS.indexOf(a.severity) - SEVS.indexOf(b.severity) || a.id.localeCompare(b.id, 'en', { numeric: true }),
+    status: (a, b) => STATUS[a.status].rank - STATUS[b.status].rank || SEVS.indexOf(a.severity) - SEVS.indexOf(b.severity),
+    since: (a, b) => (b.since || '').localeCompare(a.since || '') || SEVS.indexOf(a.severity) - SEVS.indexOf(b.severity),
+  };
+
+  /**
+   * One table: filters + rows + expandable detail.
+   * kind: 'finding' | 'blocker'. path: the route the filters are written back to.
+   */
+  function dataTable(host, rows, { kind, path, params, anchor, showStream = false, showProject = false }) {
+    const f = { ...FILTER_DEFAULTS };
+    for (const k of Object.keys(f)) if (params && params.has(k)) f[k] = params.get(k);
+    if (anchor) {
+      const hit = rows.find(r => r.id === anchor);
+      if (hit && !filterRows([hit], f).length) Object.assign(f, { status: 'all', sev: 'all', blockers: '', q: '', project: 'all', stream: 'all' });
+    }
+    const open = new Set(anchor ? [anchor] : []);
+    const byId = new Map(rows.map(r => [r.id, r]));
+    const ctxFor = r => ({ oldId: kind === 'finding' ? STREAMS.get(r.stream).notesOldId : DATA.readiness[r.project].id, route: path });
+    // Re-render from scratch on a fresh element, so listeners are never attached twice.
+    const rebuild = () => { const fresh = host.cloneNode(false); host.replaceWith(fresh); dataTable(fresh, rows, { kind, path, params: parseRoute(state).params, showStream, showProject }); };
+    const streamsHere = [...new Set(rows.map(r => r.stream))].filter(Boolean);
+    const cols = kind === 'finding'
+      ? [['id', 'ID', 100], ['severity', 'Severity', 90], ['status', 'Status', 108], [null, 'Blocker', 78], ...(showStream ? [[null, 'Stream', 130]] : []), [null, 'Description (consequence)', 0, 4.6], [null, 'Suggested fix', 0, 3.6], [null, 'Location', 0, 2.2], [null, 'Effort', 58]]
+      : [['id', 'ID', 82], ['severity', 'Severity', 90], ['status', 'Status', 108], [null, 'Blocker', 0, 4.4], [null, 'Source findings', 0, 1.8], [null, 'Fix', 0, 3.6], [null, 'Effort', 64], [null, 'Tier', 70]];
+    const fixedW = cols.reduce((a, c) => a + (c[2] || 0), 0);
+    const weights = cols.reduce((a, c) => a + (c[3] || 0), 0) || 1;
+    const MIN_W = fixedW + 640;
+    const colgroup = cols.map(c => `<col${c[2] ? ` style="width:${c[2]}px"` : ''}>`).join('');
+    host.innerHTML = `
+      <form class="filters" role="search" aria-label="Filter ${kind === 'finding' ? 'findings' : 'blockers'}" onsubmit="return false">
+        <label>Status<select data-f="status">${opt(STATUS_FILTERS, f.status)}</select></label>
+        <label>Severity<select data-f="sev">${opt(SEV_FILTERS, f.sev)}</select></label>
+        ${showProject ? `<label>Project<select data-f="project">${opt([['all', 'Both'], ...Object.entries(PROJECTS).map(([k, v]) => [k, v.label])], f.project)}</select></label>` : ''}
+        ${showStream ? `<label>Stream<select data-f="stream">${opt([['all', 'All streams'], ...DATA.streams.filter(s => f.project === 'all' || s.project === f.project).map(s => [s.key, (f.project === 'all' ? PROJECTS[s.project].label + ' · ' : '') + s.title])], f.stream)}</select></label>` : ''}
+        <label>Search<input type="search" data-f="q" value="${esc(f.q)}" placeholder="ID, file, text…"></label>
+        ${kind === 'finding' ? `<label class="chk"><input type="checkbox" data-f="blockers"${f.blockers ? ' checked' : ''}> Launch blockers only</label>` : ''}
+        <span class="count" aria-live="polite"></span>
+      </form>
+      <div class="dt-wrap"><table class="dt"><colgroup>${colgroup}</colgroup>
+        <thead><tr>${cols.map(c => `<th scope="col"${c[0] ? ` aria-sort="${f.sort === c[0] ? 'ascending' : 'none'}"` : ''}>${c[0] ? `<button type="button" data-sort="${c[0]}">${c[1]}${f.sort === c[0] ? ' ↓' : ''}</button>` : c[1]}</th>`).join('')}</tr></thead>
+        <tbody></tbody></table></div>`;
+    const tbody = host.querySelector('tbody');
+    // <col> ignores calc(); size the text columns from the measured width instead.
+    const wrapEl = host.querySelector('.dt-wrap'), tableEl = host.querySelector('table.dt'), colEls = [...host.querySelectorAll('col')];
+    const sizeCols = () => {
+      const w = Math.max(wrapEl.clientWidth - 10, MIN_W);
+      tableEl.style.width = w + 'px';
+      cols.forEach((c, i) => { if (!c[2]) colEls[i].style.width = Math.floor((w - fixedW) * c[3] / weights) + 'px'; });
+    };
+    sizeCols();
+    if (window.ResizeObserver) new ResizeObserver(sizeCols).observe(wrapEl);
+    const sync = () => {
+      const p = new URLSearchParams();
+      for (const [k, v] of Object.entries(f)) if (v && v !== FILTER_DEFAULTS[k]) p.set(k, v);
+      replaceQuery(path, p);
+    };
+    function draw() {
+      const list = filterRows(rows, f).sort(SORTS[f.sort] || SORTS['']);
+      host.querySelector('.count').textContent = `${list.length} of ${rows.length}`;
+      tbody.innerHTML = list.length
+        ? list.map(r => (kind === 'finding' ? findingRow(r, showStream) : blockerRow(r)) + detailRow(r, kind, cols.length)).join('')
+        : `<tr><td colspan="${cols.length}" class="empty">Nothing matches these filters.</td></tr>`;
+      tbody.querySelectorAll('tr.row').forEach(tr => {
+        if (open.has(tr.dataset.id)) toggle(tr, true);
+      });
+    }
+    function toggle(tr, force) {
+      const on = force ?? !tr.classList.contains('open');
+      tr.classList.toggle('open', on);
+      tr.nextElementSibling.hidden = !on;
+      tr.querySelector('.tog').setAttribute('aria-expanded', String(on));
+      if (on) { open.add(tr.dataset.id); enhance(tr.nextElementSibling, ctxFor(byId.get(tr.dataset.id))); } else open.delete(tr.dataset.id);
+    }
+    host.addEventListener('change', e => {
+      const k = e.target.dataset.f; if (!k) return;
+      f[k] = e.target.type === 'checkbox' ? (e.target.checked ? '1' : '') : e.target.value;
+      if (k === 'project') { f.stream = 'all'; sync(); return rebuild(); }
+      sync(); draw();
+    });
+    let t;
+    host.addEventListener('input', e => {
+      if (e.target.dataset.f !== 'q') return;
+      clearTimeout(t); t = setTimeout(() => { f.q = e.target.value.trim(); sync(); draw(); }, 140);
+    });
+    host.addEventListener('click', e => {
+      const s = e.target.closest('button[data-sort]');
+      if (s) { f.sort = f.sort === s.dataset.sort ? '' : s.dataset.sort; sync(); return rebuild(); }
+      if (e.target.closest('a')) return;
+      const tr = e.target.closest('tr.row');
+      if (tr && !window.getSelection().toString()) toggle(tr);
+    });
+    draw();
+    if (anchor) {
+      const tr = [...tbody.querySelectorAll('tr.row')].find(x => x.dataset.id === anchor);
+      if (tr) setTimeout(() => tr.scrollIntoView?.({ block: 'start' }), 30);
+    }
+  }
+
+  function blockerChips(f) {
+    const ids = BLOCKERS_OF.get(f.id) || [];
+    if (ids.length) return ids.map(id => { const b = BY_BID.get(id); return `<a class="lb-chip ${groupOf(b.status) === 'closed' ? 'done' : ''}" href="#/${blockerRoute(id)}" title="${esc(b.title.replace(/<[^>]+>/g, '').slice(0, 140))}">${id}</a>`; }).join('');
+    return f.blocker ? `<span class="lb-chip" title="Marked as a launch blocker by its stream">YES</span>` : '<span class="lb-no">—</span>';
+  }
+  function findingRow(f, showStream) {
+    const s = STREAMS.get(f.stream);
+    const loc = f.evidence || f.location;
+    return `<tr class="row ${groupOf(f.status) === 'closed' ? 'closed-row' : ''}" data-id="${esc(f.id)}" id="row-${esc(f.id)}">
+      <td class="idc"><button class="tog" type="button" aria-expanded="false" aria-label="Details for ${esc(f.id)}">${esc(f.id)}</button></td>
+      <td>${sevBadge(f.severity)}</td>
+      <td>${stBadge(f.status, f.since)}</td>
+      <td>${blockerChips(f)}</td>
+      ${showStream ? `<td><a href="#/stream/${s.key}">${esc(s.title)}</a><span class="since">${esc(PROJECTS[s.project].label)}</span></td>` : ''}
+      <td>${inl(f.description)}</td>
+      <td>${inl(f.fix)}</td>
+      <td class="loc">${inl(loc)}</td>
+      <td>${esc(f.effort)}</td></tr>`;
+  }
+  function blockerRow(b) {
+    const src = esc(b.sources).replace(ID_RE, id => BY_FID.has(id) ? `<a class="fid" href="#/${findingRoute(id)}">${id}</a>` : id);
+    return `<tr class="row ${groupOf(b.status) === 'closed' ? 'closed-row' : ''}" data-id="${esc(b.id)}" id="row-${esc(b.id)}">
+      <td class="idc"><button class="tog" type="button" aria-expanded="false" aria-label="Details for ${esc(b.id)}">${esc(b.id)}</button></td>
+      <td>${sevBadge(b.severity)}</td>
+      <td>${stBadge(b.status, b.since)}</td>
+      <td>${inl(b.title)}</td>
+      <td>${src}</td>
+      <td>${inl(b.fix)}</td>
+      <td>${esc(b.effort)}</td>
+      <td>${esc(b.tier)}</td></tr>`;
+  }
+  function detailRow(r, kind, span) {
+    const last = r.history[r.history.length - 1] || {};
+    const blocks = [];
+    if (kind === 'finding') {
+      if (r.note && r.note !== last.note) blocks.push(['Latest note', inl(r.note)]);
+      if (r.evidence) blocks.push(['Current evidence', `<span class="loc">${inl(r.evidence)}</span>`]);
+      if (r.evidence && r.location) blocks.push(['Where it was found', `<span class="loc">${inl(r.location)}</span>`]);
+      if (r.owasp) blocks.push(['OWASP', inl(r.owasp)]);
+      if (r.wcag) blocks.push(['WCAG', inl(r.wcag)]);
+      blocks.push(['Found', `${fmtLong(r.found)} · ${esc(STREAMS.get(r.stream).title)} (${esc(PROJECTS[r.project].label)})`]);
+    } else {
+      if (r.evidence) blocks.push(['Current evidence', inl(r.evidence)]);
+      if (r.remains) blocks.push(['What remains', inl(r.remains)]);
+    }
+    const hist = `<ul class="hist">${r.history.map(h => `<li><span class="d">${fmtDate(h.date)}</span><span>${stBadge(h.status)}</span><span>${inl(h.note)}</span></li>`).join('')}</ul>`;
+    const detail = r.detail ? `<div class="full"><h4>Detail</h4><div class="md">${DOMPurify.sanitize(marked.parse(r.detail, { gfm: true }))}</div></div>` : '';
+    return `<tr class="detail" hidden><td colspan="${span}"><div class="dgrid">
+      ${blocks.map(([h, v]) => `<div><h4>${h}</h4><p>${v}</p></div>`).join('')}
+      <div class="full"><h4>History</h4>${hist}</div>${detail}</div></td></tr>`;
+  }
+
+  // ---------- pages ----------
+  function statusBar(c, max, cls = 'bar') {
+    return `<div class="${cls}" aria-hidden="true">${STATUS_ORDER.map(s => c[s] ? `<span class="s-${s}" style="width:${(c[s] / max * 100).toFixed(2)}%" title="${c[s]} ${STATUS[s].label.toLowerCase()}"></span>` : '').join('')}</div>`;
+  }
+  const LEGEND = `<div class="legend">${STATUS_ORDER.map(s => `<span><i class="s-${s}"></i>${STATUS[s].label}</span>`).join('')}</div>`;
+
+  function renderOverview() {
+    const card = p => {
+      const v = verdictOf(p);
+      const fl = FINDINGS.filter(f => f.project === p);
+      const bl = DATA.blockers.filter(b => b.project === p);
+      const fc = tally(fl), bc = tally(bl);
+      return `<section class="proj" aria-label="${esc(PROJECTS[p].label)}">
+        <div class="head"><div><div class="eyebrow">${esc(PROJECTS[p].sub)}</div><h2>${esc(PROJECTS[p].label)}</h2></div>
+          <div class="word ${v === 'GO' ? 'go' : ''}">${esc(v)}</div></div>
+        <div><div class="prog-lbl"><span>Launch blockers</span><span><b>${bc.closed}</b> of ${bc.total} closed · <b>${bc.active}</b> open</span></div>${statusBar(bc, bc.total, 'prog')}</div>
+        <div class="nums">
+          <div><div class="n">${fc.active}</div><div class="k">Active findings</div></div>
+          <div class="c"><div class="n">${fc.sevActive.CRITICAL + fc.sevActive.HIGH}</div><div class="k">Active crit + high</div></div>
+          <div class="g"><div class="n">${fc.FIXED}</div><div class="k">Fixed</div></div>
+        </div>
+        <div class="links"><a class="cta" href="#/readiness/${p}">Launch readiness →</a><a class="cta ghost" href="#/findings?project=${p}">All ${esc(PROJECTS[p].label.toLowerCase())} findings</a></div>
+      </section>`;
+    };
+    const col = p => {
+      const ss = DATA.streams.filter(s => s.project === p);
+      const lists = ss.map(s => [s, FINDINGS.filter(f => f.stream === s.key)]);
+      const max = Math.max(...lists.map(([, l]) => l.length));
+      return `<div class="bars"><h3>${esc(PROJECTS[p].label)}</h3>${lists.map(([s, l]) => {
+        const c = tally(l);
+        return `<a class="bar-row" href="#/stream/${s.key}" aria-label="${esc(s.title)}: ${c.active} active, ${c.FIXED} fixed of ${c.total}">
+          <div class="lbl">${esc(s.title)}</div>${statusBar(c, max)}
+          <div class="tot"><b>${c.active}</b> active / ${c.total}</div></a>`;
+      }).join('')}</div>`;
+    };
+    $('#content').innerHTML = `<div class="page">
+      <h1 class="page-title">Production audit</h1>
+      <p class="lede">Status as of ${fmtLong(DATA.updated)}. Every finding has one row with its current status; when something is fixed, its row says so.</p>
+      <div class="projects">${Object.keys(PROJECTS).map(card).join('')}</div>
+      <div class="section-title"><h2>Findings by stream</h2>${LEGEND}</div>
+      <div class="stream-cols">${Object.keys(PROJECTS).map(col).join('')}</div>
+      <div class="section-title"><h2>Reference</h2></div>
+      <div class="cards">${REFERENCE.map(([id, label]) => `<a class="card" href="#/doc/${encodeURI(id)}"><div class="num">${esc(id.replace(/^reference\//, ''))}</div><div class="ttl">${esc(label)}</div></a>`).join('')}</div>
+      <p class="foot">Audit runs: ${DATA.audits.map(a => `<b>${fmtLong(a.date)}</b>: ${esc(a.scope)}`).join(' · ')}.</p>
+    </div>`;
+    setTitle('Overview');
+    scrollTop();
+  }
+
+  function pageHeader(crumbs, title, lede, stats) {
+    return `<div class="crumbs">${crumbs}</div><h1 class="page-title">${esc(title)}</h1>${lede ? `<p class="lede">${lede}</p>` : ''}
+      <div class="mini-stats">${stats.map(([n, k, cls]) => `<div class="mini ${cls || ''}"><div class="n">${n}</div><div class="k">${k}</div></div>`).join('')}</div>`;
+  }
+  function findingStats(list) {
+    const c = tally(list);
+    return [[c.active, 'Active'], [c.sevActive.CRITICAL, 'Active critical', 'c'], [c.sevActive.HIGH, 'Active high', 'h'], [c.FIXED, 'Fixed', 'g'], [c.ACCEPTED + c['NOT-VERIFIABLE'], 'Accepted / n.v.'], [c.total, 'Total']];
+  }
+
+  function renderStream(s, params, anchor) {
+    const list = FINDINGS.filter(f => f.stream === s.key);
+    $('#content').innerHTML = `<div class="page">
+      ${pageHeader(`<a href="#/">Overview</a> · ${esc(PROJECTS[s.project].label)} findings`, s.title, '', findingStats(list))}
+      <div id="dt"></div>
+      <details class="notes"><summary><span>Scope, method and notes <small>what was checked, known and accepted items, appendices</small></span></summary><article id="notes"></article></details>
+    </div>`;
+    dataTable($('#dt'), list, { kind: 'finding', path: `stream/${s.key}`, params, anchor });
+    const det = $('details.notes');
+    det.addEventListener('toggle', () => {
+      if (!det.open || det.dataset.done) return;
+      det.dataset.done = '1';
+      const art = $('#notes');
+      art.innerHTML = DOMPurify.sanitize(marked.parse(s.notes, { gfm: true }));
+      enhance(art, { oldId: s.notesOldId, route: `stream/${s.key}` });
+    });
+    setTitle(s.title);
+    if (!anchor) scrollTop();
+  }
+
+  function renderAllFindings(params, anchor) {
+    $('#content').innerHTML = `<div class="page">
+      ${pageHeader('<a href="#/">Overview</a>', 'All findings', 'Both projects in one table. Filter by project, stream, status or severity; click a row for its evidence and history.', findingStats(FINDINGS))}
+      <div id="dt"></div></div>`;
+    dataTable($('#dt'), FINDINGS, { kind: 'finding', path: 'findings', params, anchor, showStream: true, showProject: true });
+    setTitle('All findings');
+    if (!anchor) scrollTop();
+  }
+
+  function renderReadiness(project, anchor) {
+    const doc = DATA.readiness[project];
+    const marker = `<!-- blockers:${project} -->`;
+    const md = doc.md.replace(marker, '\n<div data-slot="blockers"></div>\n');
+    $('#content').innerHTML = `<div class="doc-meta"><span class="path">${esc(CONFIG.root)}/${esc(doc.id)}</span></div><article id="article">${DOMPurify.sanitize(marked.parse(md, { gfm: true }))}</article>`;
+    const art = $('#article');
+    enhance(art, { oldId: doc.id, route: `readiness/${project}` });
+    const slot = art.querySelector('[data-slot="blockers"]');
+    if (slot) {
+      const bl = DATA.blockers.filter(b => b.project === project);
+      const isBlocker = anchor && BY_BID.has(anchor);
+      dataTable(slot, bl, { kind: 'blocker', path: `readiness/${project}`, params: new URLSearchParams(), anchor: isBlocker ? anchor : '' });
+      if (isBlocker) return setTitle(`${PROJECTS[project].label} launch readiness`);
+    }
+    setTitle(`${PROJECTS[project].label} launch readiness`);
+    jumpTo(anchor);
+  }
+
+  function renderDocPage(doc, anchor) {
+    $('#content').innerHTML = `<div class="doc-meta"><span class="path">${esc(CONFIG.root)}/${esc(doc.id)}</span></div><article id="article">${DOMPurify.sanitize(marked.parse(doc.md, { gfm: true }))}</article>`;
+    enhance($('#article'), { oldId: doc.oldId, route: `doc/${doc.id}` });
+    setTitle(doc.title);
+    jumpTo(anchor);
+  }
+
+  function jumpTo(anchor) {
+    if (anchor) { const t = document.getElementById(anchor); if (t) { t.scrollIntoView(); return; } }
+    if (query) { const m = $('#article')?.querySelector('mark'); if (m) { m.scrollIntoView({ block: 'center' }); return; } }
+    scrollTop();
+  }
+
+  function renderMissing(path) {
+    $('#content').innerHTML = `<article><h1>Not found</h1><p><code>${esc(path)}</code> is not part of this audit. <a href="#/">Back to overview</a>.</p></article>`;
+    setTitle('Not found');
+  }
+
+  // ---------- markdown enhancement ----------
+  let mermaidSeq = 0;
+  function enhance(root, ctx) {
+    if (root.dataset.enhanced) return;
+    root.dataset.enhanced = '1';
+    if (ctx) enhanceLinks(root, ctx);
+    root.querySelectorAll('table').forEach(t => {
+      if (t.closest('.dt-wrap')) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'table-wrap';
+      t.parentNode.insertBefore(wrap, t);
+      wrap.appendChild(t);
+      t.querySelectorAll('td').forEach(td => {
+        const txt = td.textContent.trim().replace(/\*/g, '');
+        if (SEVS.includes(txt)) td.innerHTML = sevBadge(txt);
+      });
+    });
+    linkIds(root);
+    if (ctx) enhanceHeadings(root, ctx.route);
+    renderMermaid(root);
+    if (query && ctx) highlight(root, query);
+  }
+  function enhanceLinks(root, { oldId, route }) {
+    root.querySelectorAll('a[href]').forEach(a => {
+      const href = a.getAttribute('href');
+      if (/^(https?:|mailto:)/i.test(href)) { a.target = '_blank'; a.rel = 'noopener noreferrer'; return; }
+      if (href.startsWith('#/')) return;
+      if (href.startsWith('#')) { a.setAttribute('href', `#/${encodeURI(route)}::${href.slice(1)}`); return; }
+      const [pathPart, frag] = href.split('#');
+      const target = resolve(oldId, decodeURI(pathPart));
+      let dest = ALIASES[target];
+      // A link whose text is a finding ID goes to that finding's row, not just its stream.
+      const txtId = a.textContent.trim();
+      if (dest && dest.startsWith('stream/') && BY_FID.has(txtId) && !frag) dest = findingRoute(txtId);
+      if (dest) {
+        a.setAttribute('href', `#/${encodeURI(dest)}${frag && dest.startsWith('doc/') ? '::' + frag : ''}`);
+      } else if (location.protocol === 'file:') {
+        a.setAttribute('href', encodeURI(target) + (frag ? '#' + frag : ''));
+        a.title = `Opens ${target} from the repository`;
+      } else {
+        const span = document.createElement('span');
+        span.className = 'repo-path';
+        span.title = `Repository path: ${target.replace(/^(\.\.\/)+/, '')}`;
+        span.innerHTML = a.innerHTML;
+        a.replaceWith(span);
+      }
+    });
+  }
+  // Turn bare finding / blocker IDs in prose into links to their row.
+  function linkIds(root) {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: n => n.parentElement.closest('a, code, pre, svg, .mermaid-box, .dt-wrap, h1, button') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT,
+    });
+    const nodes = [];
+    while (walker.nextNode()) { ID_RE.lastIndex = 0; if (ID_RE.test(walker.currentNode.nodeValue)) nodes.push(walker.currentNode); }
+    for (const node of nodes) {
+      const text = node.nodeValue;
+      const frag = document.createDocumentFragment();
+      let i = 0;
+      text.replace(ID_RE, (id, at) => {
+        const r = BY_FID.has(id) ? findingRoute(id) : BY_BID.has(id) ? blockerRoute(id) : '';
+        if (!r) return id;
+        frag.appendChild(document.createTextNode(text.slice(i, at)));
+        const a = document.createElement('a');
+        a.className = 'fid'; a.href = `#/${encodeURI(r)}`; a.textContent = id;
+        const rec = BY_FID.get(id) || BY_BID.get(id);
+        a.title = `${STATUS[rec.status].label}${rec.since ? ' since ' + fmtDate(rec.since) : ''}`;
+        frag.appendChild(a);
+        i = at + id.length;
+        return id;
+      });
+      if (i === 0) continue;
+      frag.appendChild(document.createTextNode(text.slice(i)));
+      node.replaceWith(frag);
+    }
+  }
+  function enhanceHeadings(root, route) {
+    const used = new Set();
+    const items = [];
+    root.querySelectorAll('h2, h3').forEach(h => {
+      let id = slug(h.textContent) || 'section';
+      while (used.has(id)) id += '-x';
+      used.add(id);
+      h.id = id;
+      const a = document.createElement('a');
+      a.className = 'heading-anchor';
+      a.href = `#/${encodeURI(route)}::${id}`;
+      a.setAttribute('aria-label', 'Link to this section');
+      a.textContent = '#';
+      h.appendChild(a);
+      items.push({ id, level: h.tagName, text: h.textContent.replace(/#$/, '') });
+    });
+    if (root.id === 'article') {
+      $('#onpage').innerHTML = items.length > 2
+        ? `<h2>On this page</h2>${items.map(i => `<a class="${i.level === 'H3' ? 'l3' : ''}" href="#/${encodeURI(route)}::${i.id}">${esc(i.text)}</a>`).join('')}`
+        : '';
+    }
+  }
+  function isDark() {
+    const t = document.documentElement.dataset.theme;
+    return t === 'dark' || (!t && matchMedia('(prefers-color-scheme: dark)').matches);
+  }
+  async function renderMermaid(root) {
+    const blocks = root.querySelectorAll('pre > code.language-mermaid');
+    if (!blocks.length) return;
+    mermaid.initialize({ startOnLoad: false, suppressErrorRendering: true, securityLevel: 'strict', theme: isDark() ? 'dark' : 'neutral', fontFamily: 'IBM Plex Sans' });
+    for (const code of blocks) {
+      const box = document.createElement('div');
+      box.className = 'mermaid-box';
+      const src = code.textContent;
+      code.parentElement.replaceWith(box);
+      const id = `mmd-${++mermaidSeq}`;
+      try {
+        await mermaid.parse(src);
+        const { svg } = await mermaid.render(id, src);
+        box.innerHTML = svg;
+      } catch (e) {
+        // mermaid can leave its scratch / error SVG appended to <body>; remove it
+        document.querySelectorAll(`#${id}, #d${id}`).forEach(n => { if (!box.contains(n)) n.remove(); });
+        box.innerHTML = `<div class="mermaid-err">Diagram failed to render: ${esc(String(e.message || e))}</div><pre><code>${esc(src)}</code></pre>`;
+      }
+    }
+  }
+  function highlight(root, q) {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: n => n.parentElement.closest('svg, script, style, .mermaid-box, .dt-wrap, .filters') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT,
+    });
+    const lq = q.toLowerCase();
+    const nodes = [];
+    while (walker.nextNode()) if (walker.currentNode.nodeValue.toLowerCase().includes(lq)) nodes.push(walker.currentNode);
+    for (const node of nodes) {
+      const frag = document.createDocumentFragment();
+      const text = node.nodeValue;
+      let i = 0, j;
+      while ((j = text.toLowerCase().indexOf(lq, i)) !== -1) {
+        frag.appendChild(document.createTextNode(text.slice(i, j)));
+        const m = document.createElement('mark');
+        m.textContent = text.slice(j, j + q.length);
+        frag.appendChild(m);
+        i = j + q.length;
+      }
+      frag.appendChild(document.createTextNode(text.slice(i)));
+      node.replaceWith(frag);
+    }
+  }
+
+  // ---------- theme ----------
+  const THEMES = ['auto', 'light', 'dark'];
+  function applyTheme(t) {
+    if (t === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
+    $('#themeBtn').textContent = `Theme: ${t}`;
+    try { localStorage.setItem('audit-theme', t); } catch (e) { /* storage unavailable */ }
+  }
+  let theme = 'auto';
+  try { theme = localStorage.getItem('audit-theme') || 'auto'; } catch (e) { /* storage unavailable */ }
+  applyTheme(theme);
+  $('#themeBtn').addEventListener('click', () => {
+    theme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
+    applyTheme(theme);
+    route(); // re-render so Mermaid picks up the new palette
+  });
+
+  // ---------- events ----------
+  let debounce;
+  $('#q').addEventListener('input', e => {
+    clearTimeout(debounce);
+    debounce = setTimeout(() => { query = e.target.value.trim(); renderToc(); }, 160);
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === '/' && !/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) { e.preventDefault(); $('#q').focus(); }
+    if (e.key === 'Escape') { document.body.classList.remove('nav-open'); $('#menuBtn').setAttribute('aria-expanded', 'false'); }
+  });
+  $('#menuBtn').addEventListener('click', () => {
+    const open = document.body.classList.toggle('nav-open');
+    $('#menuBtn').setAttribute('aria-expanded', String(open));
+  });
+  $('#scrim').addEventListener('click', () => document.body.classList.remove('nav-open'));
+  document.addEventListener('click', e => {
+    const a = e.target.closest('a[href^="#/"]');
+    if (!a || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    e.preventDefault();
+    navigate(decodeURI(a.getAttribute('href').slice(2)));
+  });
+  window.addEventListener('popstate', () => { state = readHash(); route(); });
+
+  $('#brandName').textContent = PRODUCT;
+  $('#brandDate').textContent = `Status as of ${fmtLong(DATA.updated)}`;
+  renderToc();
+  route();
+})();
+</script>
+</body>
+</html>
